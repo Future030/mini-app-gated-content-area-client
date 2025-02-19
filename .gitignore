@@ -5,42 +5,42 @@
 .radzen/
 
 # .NET build artifacts
-bin/
-obj/
-*.exe
-*.dll
-*.pdb
-*.log
-*.cache
-*.vs/
-*.suo
-*.user
-*.rsuser
-*.userosscache
-*.sln.docstates
-TestResults/
-coverage/
+**/bin/
+**/obj/
+**/*.exe
+**/*.dll
+**/*.pdb
+**/*.log
+**/*.cache
+**/.vs/
+**/*.suo
+**/*.user
+**/*.rsuser
+**/*.userosscache
+**/*.sln.docstates
+**/TestResults/
+**/coverage/
 
 # Blazor WebAssembly
-wwwroot/dist/
-wwwroot/node_modules/
-wwwroot/.npm/
-wwwroot/.cache/
-wwwroot/js/dist/
-wwwroot/css/
-wwwroot/lib/
+**/wwwroot/dist/
+**/wwwroot/node_modules/
+**/wwwroot/.npm/
+**/wwwroot/.cache/
+**/wwwroot/js/dist/
+**/wwwroot/css/
+**/wwwroot/lib/
 
 # Node.js dependencies
-node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+**/node_modules/
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
 
 # Environment variables & Secrets
-.env
-.env.local
-.env.development
-.env.production
-.env.test
-appsettings.Development.json
-secrets.json
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+**/.env.test
+**/appsettings.Development.json
+**/secrets.json

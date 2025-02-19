@@ -24,10 +24,17 @@
 
   <ItemGroup>
     <_ContentIncludedByDefault Remove="wwwroot\sample-data\weather.json" />
+    <_ContentIncludedByDefault Remove="wwwroot\js\dist\blazorInterop.bundle.js" />
+    <_ContentIncludedByDefault Remove="wwwroot\js\dist\blazorInterop.bundle.js.LICENSE.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Layout\" />
+    <Folder Include="wwwroot\js\" />
   </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="npm install" WorkingDirectory="npm_packages" />
+    <Exec Command="npm run build" WorkingDirectory="npm_packages" />
+  </Target>
 
 </Project>
