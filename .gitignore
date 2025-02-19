@@ -5,21 +5,21 @@
 .radzen/
 
 # .NET build artifacts
-**/bin/
-**/obj/
-**/*.exe
-**/*.dll
-**/*.pdb
-**/*.log
-**/*.cache
-**/.vs/
-**/*.suo
-**/*.user
-**/*.rsuser
-**/*.userosscache
-**/*.sln.docstates
-**/TestResults/
-**/coverage/
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.log
+*.cache
+.vs/
+*.suo
+*.user
+*.rsuser
+*.userosscache
+*.sln.docstates
+TestResults/
+coverage/
 
 # Blazor WebAssembly
 **/wwwroot/dist/
@@ -37,10 +37,10 @@
 **/pnpm-lock.yaml
 
 # Environment variables & Secrets
-**/.env
-**/.env.local
-**/.env.development
-**/.env.production
-**/.env.test
-**/appsettings.Development.json
-**/secrets.json
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+appsettings.Development.json
+secrets.json

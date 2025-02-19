@@ -7,6 +7,11 @@ using Future030.MiniApp.GatedContentArea.Client.Services;
 using Refit;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+builder.Logging.SetMinimumLevel(LogLevel.Debug); // Set the minimum log level
+builder.Logging.AddFilter("System", LogLevel.Warning); // Reduce verbosity of system logs
+builder.Logging.AddFilter("Microsoft", LogLevel.Warning); // Reduce verbosity of Microsoft logs
+
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 

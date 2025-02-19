@@ -1,7 +1,9 @@
-@page "/content/{area}"
+@page "/content/{Area}"
 @using Future030.MiniApp.GatedContentArea.Client.Services
-@inject IContentService ContentService
-@inject IJSRuntime JSRuntime
+@using JetBrains.Annotations
+@inject ILogger<ContentArea> Logger;
+@inject IJSRuntime JSRuntime;
+@inject IContentService ContentService;
 
 <h3>Exclusive Content Area</h3>
 
@@ -11,13 +13,12 @@
 }
 else if (!_hasAccess)
 {
-    <p>You don't have the required token to open the gate to the exclusive content area.</p>
+    <p>You don't have the required token to access this content.</p>
 }
 else
 {
-    <p>Welcome, Universal Profile: @_visitorUP</p>
-    <p>Enjoy your exclusive content!</p>
-
+    <p>Welcome, Universal Profile: @_connectionState?.VisitorAddress</p>
+    <p>Chain ID: @_connectionState?.ChainId</p>
     <div class="image-gallery">
         @foreach (var image in _images)
         {
@@ -27,59 +28,111 @@ else
 }
 
 @code {
-    [Parameter, EditorRequired] public string Area { get; set; } = string.Empty;
+    [Parameter] public string Area { get; set; } = string.Empty;
 
     private bool _isAuthenticated;
     private bool _hasAccess;
-    private string? _visitorUP;
-    private string? _ownerUP;
+    private ConnectionState? _connectionState;
     private List<string> _images = new();
 
     protected override async Task OnInitializedAsync()
     {
-        if (string.IsNullOrWhiteSpace(Area))
+        await JSRuntime.InvokeVoidAsync("upProviderInterop.initializeState", DotNetObjectReference.Create(this));
+        await FetchAndVerifyConnectionState();
+    }
+
+    private async Task FetchAndVerifyConnectionState()
+    {
+        Logger.LogTrace("Fetching and verifying connection state for Area: {Area}", Area);
+        try
         {
-            Console.WriteLine("Missing required path parameter: area.");
-            return;
+            Logger.LogInformation("🔹 Checking connection state...");
+
+            // Fetch the connection state
+            _connectionState = await JSRuntime.InvokeAsync<ConnectionState>("upProviderInterop.getConnectionState");
+            Logger.LogDebug("Connection state fetched: {@ConnectionState}", _connectionState);
+
+            // Validate retrieved data
+            if (_connectionState == null ||
+                string.IsNullOrEmpty(_connectionState.VisitorAddress) ||
+                string.IsNullOrEmpty(_connectionState.OwnerAddress) ||
+                !_connectionState.ChainId.HasValue)
+            {
+                _isAuthenticated = false;
+                _hasAccess = false;
+                Logger.LogWarning("❌ Missing connection state data. Details: {@ConnectionState}", _connectionState);
+                return;
+            }
+
+            Logger.LogInformation("✅ Connection state is valid. Details: {@ConnectionState}", _connectionState);
+
+            _isAuthenticated = true;
+
+            // TODO: Security
+            // // Generate a nonce
+            // string nonce = Guid.NewGuid().ToString();
+            // Logger.LogDebug("🔹 Generated Nonce: {Nonce}", nonce);
+            //
+            // // Sign the nonce
+            // Logger.LogTrace("Requesting signature for the nonce...");
+            // var signature = await JSRuntime.InvokeAsync<string>("upProviderInterop.signMessage", nonce);
+            // if (string.IsNullOrEmpty(signature))
+            // {
+            //     Logger.LogError("❌ Failed to sign the nonce: {Nonce}", nonce);
+            //     return;
+            // }
+            // Logger.LogDebug("🔹 Signature generated: {Signature}", signature);
+
+            // Prepare request data and send to backend
+            var requestPayload = new GatedContentRequest(
+                _connectionState.VisitorAddress,
+                _connectionState.OwnerAddress,
+                _connectionState.ChainId!.Value,
+                Area, Guid.NewGuid().ToString(), string.Empty);
+            Logger.LogInformation("Sending gated content request with payload: {Payload}", requestPayload);
+
+            var response = await ContentService.GetGatedContentAsync(requestPayload);
+
+            // Handle response
+            if (response?.Count > 0)
+            {
+                Logger.LogInformation("✅ Access Granted. Loaded {Count} images", response.Count);
+                _images = response;
+                _hasAccess = true;
+            }
+            else
+            {
+                Logger.LogWarning("❌ Access Denied. No images returned");
+                _hasAccess = false;
+            }
         }
-
-        // Get connected UPs from UP-Provider
-        var upData = await JSRuntime.InvokeAsync<UniversalProfileData>("upProviderInterop.getUPData");
-
-        if (upData?.VisitorUP is null || upData?.OwnerUP is null)
+        catch (Exception ex)
         {
-            Console.WriteLine("Failed to retrieve Universal Profile data.");
-            return;
-        }
-
-        _visitorUP = upData.VisitorUP;
-        _ownerUP = upData.OwnerUP;
-        _isAuthenticated = true;
-
-        // Generate nonce
-        string nonce = Guid.NewGuid().ToString();
-
-        // Sign the nonce
-        var signature = await JSRuntime.InvokeAsync<string>("upProviderInterop.signMessage", nonce);
-
-        // Send request to backend
-        var requestPayload = new GatedContentRequest(_visitorUP, _ownerUP, Area, nonce, signature);
-        var response = await ContentService.GetGatedContentAsync(requestPayload);
-
-        if (response?.Count > 0)
-        {
-            _images = response;
-            _hasAccess = true;
-        }
-        else
-        {
+            _isAuthenticated = false;
             _hasAccess = false;
+            Logger.LogError(ex, "❌ Error occurred in FetchAndVerifyConnectionState. Area: {Area}", Area);
+        }
+        finally
+        {
+            Logger.LogTrace("FetchAndVerifyConnectionState method completed for Area: {Area}", Area);
+            StateHasChanged();
         }
     }
 
-    private sealed class UniversalProfileData
+    // JavaScript Interop for Reactive State Updates
+    [JSInvokable]
+    public async Task StateUpdated()
     {
-        public string? VisitorUP { get; set; }
-        public string? OwnerUP { get; set; }
+        Console.WriteLine("🔄 Reacting to connection state updates...");
+        await FetchAndVerifyConnectionState();
+    }
+    
+    // Define the ConnectionState model
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    public class ConnectionState
+    {
+        public string? VisitorAddress { get; set; }
+        public string? OwnerAddress { get; set; }
+        public int? ChainId { get; set; }
     }
 }

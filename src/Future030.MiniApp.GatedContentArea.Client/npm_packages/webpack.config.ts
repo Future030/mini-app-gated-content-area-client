@@ -4,7 +4,7 @@ import * as webpack from 'webpack';
 const config: webpack.Configuration = {
     entry: './src/blazorInterop.ts',
     output: {
-        path: path.resolve('./../wwwroot/js/dist'),
+        path: path.resolve('../wwwroot/js/dist'),
         filename: 'blazorInterop.bundle.js',
     },
     resolve: {
@@ -19,7 +19,8 @@ const config: webpack.Configuration = {
             },
         ],
     },
-    mode: 'production'
+    mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+    devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false,
 };
 
 export default config;

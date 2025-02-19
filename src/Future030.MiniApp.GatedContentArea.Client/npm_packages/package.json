@@ -4,6 +4,8 @@
   "main": "index.js",
   "scripts": {
     "build": "TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack",
+    "build:development": "NODE_ENV=development TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack",
+    "build:production": "NODE_ENV=production TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,6 +23,7 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@lukso/up-provider": "^0.3.3"
+    "@lukso/up-provider": "^0.3.3",
+    "ethers": "^6.13.5"
   }
 }
