@@ -1,0 +1,45 @@
+# JetBrains Rider - Allow Rider to manage its own .gitignore inside .idea/
+!.idea/
+
+# Radzen Blazor Studio
+.radzen/
+
+# .NET build artifacts
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.log
+*.cache
+*.vs/
+*.suo
+*.user
+*.rsuser
+*.userosscache
+*.sln.docstates
+TestResults/
+coverage/
+
+# Blazor WebAssembly
+wwwroot/dist/
+wwwroot/node_modules/
+wwwroot/.npm/
+wwwroot/.cache/
+wwwroot/js/dist/
+wwwroot/css/
+wwwroot/lib/
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment variables & Secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+secrets.json
