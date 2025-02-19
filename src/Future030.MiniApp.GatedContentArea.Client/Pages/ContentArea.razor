@@ -1,11 +1,44 @@
 @page "/content/{Area}"
+@using Future030.MiniApp.GatedContentArea.Client.Configuration
 @using Future030.MiniApp.GatedContentArea.Client.Services
 @using JetBrains.Annotations
+@using Microsoft.Extensions.Options
 @inject ILogger<ContentArea> Logger;
 @inject IJSRuntime JSRuntime;
 @inject IContentService ContentService;
+@inject IOptions<BackendApiOptions> BackendApiOptions
 
-<h3>Exclusive Content Area</h3>
+<style>
+    body {
+        padding: 4px;
+        text-align: center;
+    }
+    
+    .content-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem; /* Medium margin between items */
+        margin-top: 1rem;
+    }
+
+    .content-gallery > img {
+        width: 128px;         /* Set thumbnail width */
+        height: 128px;        /* Set thumbnail height */
+        object-fit: cover;    /* Scale and crop the image to fit within 128x128 */
+        display: block;       /* Proper alignment */
+        border-radius: 8px;   /* Optional: Rounded corners for a modern look */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Optional: Add some shadow */
+    }
+
+    .content-gallery > video {
+        width: 128px;         /* Same rules applied for consistency */
+        height: 128px;
+        object-fit: cover;
+    }
+</style>
+
+<h4>@Area</h4>
 
 @if (!_isAuthenticated)
 {
@@ -17,12 +50,36 @@ else if (!_hasAccess)
 }
 else
 {
-    <p>Welcome, Universal Profile: @_connectionState?.VisitorAddress</p>
-    <p>Chain ID: @_connectionState?.ChainId</p>
-    <div class="image-gallery">
-        @foreach (var image in _images)
+    <div class="content-gallery">
+        @foreach (var content in _contentItems)
         {
-            <img src="@image" alt="Exclusive Content" style="width:100%; margin-bottom:10px;" />
+            // Build the fetch URL from OwnerUP/Area/FileName
+            var secureUrl = GetSecureUrl(_connectionState!.OwnerAddress!, Area, content.FileName);
+
+            if (content.MimeType.StartsWith("image/"))
+            {
+                <!--suppress RequiredAttributes -->
+                <img
+                    class="secure-content"
+                    data-fetch-url="@secureUrl"
+                    data-mime-type="@content.MimeType"
+                    alt="Exclusive Image" />
+            }
+            else if (content.MimeType.StartsWith("video/"))
+            {
+                <video controls>
+                    <!--suppress RequiredAttributes -->
+                    <source
+                        class="secure-content"
+                        data-fetch-url="@secureUrl"
+                        data-mime-type="@content.MimeType" />
+                    Your browser does not support the video tag.
+                </video>
+            }
+            else
+            {
+                <p>Unsupported content type: @content.MimeType</p>
+            }
         }
     </div>
 }
@@ -33,11 +90,12 @@ else
     private bool _isAuthenticated;
     private bool _hasAccess;
     private ConnectionState? _connectionState;
-    private List<string> _images = new();
+    private List<ContentItem> _contentItems = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await JSRuntime.InvokeVoidAsync("upProviderInterop.initializeState", DotNetObjectReference.Create(this));
+        await JSRuntime.InvokeVoidAsync("upProviderInterop.initializeState",
+            DotNetObjectReference.Create(this));
         await FetchAndVerifyConnectionState();
     }
 
@@ -48,11 +106,10 @@ else
         {
             Logger.LogInformation("🔹 Checking connection state...");
 
-            // Fetch the connection state
-            _connectionState = await JSRuntime.InvokeAsync<ConnectionState>("upProviderInterop.getConnectionState");
+            _connectionState = await JSRuntime
+                .InvokeAsync<ConnectionState>("upProviderInterop.getConnectionState");
             Logger.LogDebug("Connection state fetched: {@ConnectionState}", _connectionState);
 
-            // Validate retrieved data
             if (_connectionState == null ||
                 string.IsNullOrEmpty(_connectionState.VisitorAddress) ||
                 string.IsNullOrEmpty(_connectionState.OwnerAddress) ||
@@ -60,74 +117,81 @@ else
             {
                 _isAuthenticated = false;
                 _hasAccess = false;
-                Logger.LogWarning("❌ Missing connection state data. Details: {@ConnectionState}", _connectionState);
+                Logger.LogWarning("❌ Missing connection state data: {@ConnectionState}", _connectionState);
                 return;
             }
 
-            Logger.LogInformation("✅ Connection state is valid. Details: {@ConnectionState}", _connectionState);
-
             _isAuthenticated = true;
 
-            // TODO: Security
-            // // Generate a nonce
-            // string nonce = Guid.NewGuid().ToString();
-            // Logger.LogDebug("🔹 Generated Nonce: {Nonce}", nonce);
-            //
-            // // Sign the nonce
-            // Logger.LogTrace("Requesting signature for the nonce...");
-            // var signature = await JSRuntime.InvokeAsync<string>("upProviderInterop.signMessage", nonce);
-            // if (string.IsNullOrEmpty(signature))
-            // {
-            //     Logger.LogError("❌ Failed to sign the nonce: {Nonce}", nonce);
-            //     return;
-            // }
-            // Logger.LogDebug("🔹 Signature generated: {Signature}", signature);
-
-            // Prepare request data and send to backend
-            var requestPayload = new GatedContentRequest(
-                _connectionState.VisitorAddress,
+            // 🔹 Call GetGatedContentAsync and handle ApiResponse
+            var response = await ContentService.GetGatedContentAsync(
                 _connectionState.OwnerAddress,
-                _connectionState.ChainId!.Value,
-                Area, Guid.NewGuid().ToString(), string.Empty);
-            Logger.LogInformation("Sending gated content request with payload: {Payload}", requestPayload);
+                Area,
+                _connectionState.VisitorAddress,
+                Guid.NewGuid().ToString(), // Nonce
+                "", // signature placeholder
+                _connectionState.ChainId.Value
+            );
 
-            var response = await ContentService.GetGatedContentAsync(requestPayload);
-
-            // Handle response
-            if (response?.Count > 0)
+            if (response is { IsSuccessStatusCode: true, Content: not null })
             {
-                Logger.LogInformation("✅ Access Granted. Loaded {Count} images", response.Count);
-                _images = response;
+                Logger.LogInformation("✅ Access Granted. Loaded {Count} items", response.Content.Count);
+
+                _contentItems = response.Content;
                 _hasAccess = true;
+
+                StateHasChanged();
+
+                // Call TS to set the actual content src via fetch + blob
+                await JSRuntime.InvokeVoidAsync("secureContentLoader.loadContent", GenerateAuthHeaders());
             }
             else
             {
-                Logger.LogWarning("❌ Access Denied. No images returned");
+                // Handle error responses
+                var errorMessage = response.Error?.Content ?? "Unknown error!";
+                _contentItems.Clear();
                 _hasAccess = false;
+
+                Logger.LogError("❌ Access Denied or Error: {ErrorMessage}", errorMessage);
             }
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "❌ Exception occurred while fetching gated content");
             _isAuthenticated = false;
             _hasAccess = false;
-            Logger.LogError(ex, "❌ Error occurred in FetchAndVerifyConnectionState. Area: {Area}", Area);
         }
         finally
         {
-            Logger.LogTrace("FetchAndVerifyConnectionState method completed for Area: {Area}", Area);
             StateHasChanged();
         }
     }
 
-    // JavaScript Interop for Reactive State Updates
+    private Dictionary<string, string> GenerateAuthHeaders()
+    {
+        return new Dictionary<string, string>
+        {
+            { "X-Visitor-UP", _connectionState?.VisitorAddress ?? string.Empty },
+            { "X-Nonce", Guid.NewGuid().ToString() },
+            { "X-Signature", "" }, // Replace with actual signature implementation
+            { "X-Chain-Id", _connectionState?.ChainId.ToString() ?? string.Empty }
+        };
+    }
+    
+    private string GetSecureUrl(string ownerAddress, string area, string fileName)
+    {
+        // Use the configured base URL as a prefix
+        var baseUrl = BackendApiOptions.Value.BaseUrl.TrimEnd('/');
+        return $"{baseUrl}/api/content/fetch/{ownerAddress}/{area}/{fileName}";
+    }
+
     [JSInvokable]
     public async Task StateUpdated()
     {
         Console.WriteLine("🔄 Reacting to connection state updates...");
         await FetchAndVerifyConnectionState();
     }
-    
-    // Define the ConnectionState model
+
     [UsedImplicitly(ImplicitUseTargetFlags.Members)]
     public class ConnectionState
     {

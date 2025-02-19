@@ -138,3 +138,42 @@ async function triggerStateUpdate() {
     getConnectionState,
     signMessage
 };
+
+(window as any).secureContentLoader = {
+    loadContent: (authHeaders: { [key: string]: string }) => {
+
+        // 1) Select all elements that have class="secure-content"
+        const elements = document.querySelectorAll('.secure-content');
+
+        // 2) For each, read the data-fetch-url and do a fetch with your headers
+        elements.forEach((element) => {
+            if(element.getAttribute("src")) return;
+            const fetchUrl = element.getAttribute('data-fetch-url');
+            if (!fetchUrl) return; // No URL? skip.
+
+            fetch(fetchUrl, {
+                method: "GET",
+                headers: authHeaders
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch content from ${fetchUrl}`);
+                    }
+                    return response.blob();
+                })
+                .then((blob) => {
+                    const objectUrl = URL.createObjectURL(blob);
+
+                    // 3) If it's an <img>, set the `src`.
+                    //    If it's a <source>, set `src` and re-load the parent <video>.
+                    if (element.tagName === "IMG") {
+                        element.setAttribute("src", objectUrl);
+                    } else if (element.tagName === "SOURCE") {
+                        element.setAttribute("src", objectUrl);
+                        (element.parentNode as HTMLVideoElement)?.load();
+                    }
+                })
+                .catch((error) => console.error("🔴 Error loading content:", error));
+        });
+    }
+};
