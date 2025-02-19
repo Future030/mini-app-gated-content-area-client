@@ -42,4 +42,5 @@ pnpm-lock.yaml
 .env.development
 .env.production
 .env.test
+appsettings.Development.json
 secrets.json

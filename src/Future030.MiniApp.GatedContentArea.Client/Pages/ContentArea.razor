@@ -1,0 +1,85 @@
+@page "/content/{area}"
+@using Future030.MiniApp.GatedContentArea.Client.Services
+@inject IContentService ContentService
+@inject IJSRuntime JSRuntime
+
+<h3>Exclusive Content Area</h3>
+
+@if (!_isAuthenticated)
+{
+    <p>You are not logged in.</p>
+}
+else if (!_hasAccess)
+{
+    <p>You don't have the required token to open the gate to the exclusive content area.</p>
+}
+else
+{
+    <p>Welcome, Universal Profile: @_visitorUP</p>
+    <p>Enjoy your exclusive content!</p>
+
+    <div class="image-gallery">
+        @foreach (var image in _images)
+        {
+            <img src="@image" alt="Exclusive Content" style="width:100%; margin-bottom:10px;" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Area { get; set; } = string.Empty;
+
+    private bool _isAuthenticated;
+    private bool _hasAccess;
+    private string? _visitorUP;
+    private string? _ownerUP;
+    private List<string> _images = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Area))
+        {
+            Console.WriteLine("Missing required path parameter: area.");
+            return;
+        }
+
+        // Get connected UPs from UP-Provider
+        var upData = await JSRuntime.InvokeAsync<UniversalProfileData>("upProviderInterop.getUPData");
+
+        if (upData?.VisitorUP is null || upData?.OwnerUP is null)
+        {
+            Console.WriteLine("Failed to retrieve Universal Profile data.");
+            return;
+        }
+
+        _visitorUP = upData.VisitorUP;
+        _ownerUP = upData.OwnerUP;
+        _isAuthenticated = true;
+
+        // Generate nonce
+        string nonce = Guid.NewGuid().ToString();
+
+        // Sign the nonce
+        var signature = await JSRuntime.InvokeAsync<string>("upProviderInterop.signMessage", nonce);
+
+        // Send request to backend
+        var requestPayload = new GatedContentRequest(_visitorUP, _ownerUP, Area, nonce, signature);
+        var response = await ContentService.GetGatedContentAsync(requestPayload);
+
+        if (response?.Count > 0)
+        {
+            _images = response;
+            _hasAccess = true;
+        }
+        else
+        {
+            _hasAccess = false;
+        }
+    }
+
+    private sealed class UniversalProfileData
+    {
+        public string? VisitorUP { get; set; }
+        public string? OwnerUP { get; set; }
+    }
+}
