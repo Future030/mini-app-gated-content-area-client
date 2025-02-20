@@ -1,0 +1,14 @@
+{
+  "$schema": "https://aka.ms/azure/static-web-apps-cli/schema",
+  "configurations": {
+    "future030.mini-app.gated-content-area.client": {
+      "appLocation": ".",
+      "outputLocation": "bin/wwwroot",
+      "appBuildCommand": "dotnet publish -c Release -o bin",
+      "run": "dotnet watch run",
+      "appDevserverUrl": "http://localhost:8000",
+      "appName": "future030.mini-app.gated-content-area.client",
+      "resourceGroup": "future030.mini-app.gated-content-area.client-rg"
+    }
+  }
+}
