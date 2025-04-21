@@ -4,11 +4,27 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  app_location: "src/Future030.MiniApp.GatedContentArea.Client"
+  output_location: "bin/wwwroot"
+  deployment_token: $(DEPLOYMENT_TOKEN)
+
 steps:
-- task: AzureStaticWebApp@0
-  inputs:
-    workingDirectory: '$(System.DefaultWorkingDirectory)/src/Future030.MiniApp.GatedContentArea.Client.'
-    app_location: '.'
-    app_build_command: 'dotnet publish -c Release -o bin'
-    output_location: 'bin/wwwroot'
-    azure_static_web_apps_api_token: '$(DEPLOYMENT_TOKEN)'
+  - task: UseDotNet@2
+    displayName: "Install .NET SDK"
+    inputs:
+      packageType: "sdk"
+      version: "8.x"
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+
+  - script: |
+      cd $(app_location)
+      dotnet publish -c Release -o bin
+    displayName: "Build Blazor WebAssembly project"
+
+  - task: AzureStaticWebApp@0
+    displayName: "Deploy to Azure Static Web Apps"
+    inputs:
+      app_location: "$(app_location)"
+      output_location: "$(output_location)"
+      azure_static_web_apps_api_token: "$(deployment_token)"
