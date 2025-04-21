@@ -9,21 +9,15 @@ variables:
   output_location: "bin/wwwroot"
 
 steps:
-  - task: UseDotNet@2
-    displayName: "Install .NET SDK"
+  - task: NodeTool@0
+    displayName: "Install Node.js"
     inputs:
-      packageType: "sdk"
-      version: "8.x"
-      installationPath: $(Agent.ToolsDirectory)/dotnet
-
-  - script: |
-      cd $(app_location)
-      dotnet publish -c Release -o bin
-    displayName: "Build Blazor WebAssembly project"
+      versionSpec: "20.x"
 
   - task: AzureStaticWebApp@0
     displayName: "Deploy to Azure Static Web Apps"
     inputs:
       app_location: "$(app_location)"
       output_location: "$(output_location)"
+      app_build_command: "dotnet publish -c Release -o bin"
       azure_static_web_apps_api_token: "$(DEPLOYMENT_TOKEN)"
