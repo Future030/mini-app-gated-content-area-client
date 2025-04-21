@@ -84,8 +84,23 @@ else
     </div>
 }
 
+<footer style="margin-top: 2rem; font-size: 0.8rem; color: gray;">
+    Want your own gated content area?
+    <a href="@MailtoLink">Contact us</a>.
+</footer>
+
 @code {
     [Parameter] public string Area { get; set; } = string.Empty;
+    
+    private static readonly string ContactEmail = "hello@future030.com";
+    private static readonly string MailSubject = Uri.EscapeDataString("Gated Content Area Request");
+    private static readonly string MailBody = Uri.EscapeDataString(
+        "Hi Future030 Team,\n\n" +
+        "I am interested in setting up a gated content area. Please get in touch with me.\n\n" +
+        "Best regards,\n[Your Name]"
+    );
+
+    private string MailtoLink => $"mailto:{ContactEmail}?subject={MailSubject}&body={MailBody}";
 
     private bool _isAuthenticated;
     private bool _hasAccess;
