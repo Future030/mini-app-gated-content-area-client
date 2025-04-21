@@ -8,3 +8,4 @@ steps:
 - task: AzureStaticWebApp@0
   inputs:
     workingDirectory: '$(System.DefaultWorkingDirectory)/src/Future030.MiniApp.GatedContentArea.Client.'
+    azure_static_web_apps_api_token: '$(DEPLOYMENT_TOKEN)'
