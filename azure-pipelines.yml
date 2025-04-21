@@ -4,11 +4,6 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
-variables:
-  var_app_location: "src/Future030.MiniApp.GatedContentArea.Client"
-  var_output_location: "bin/wwwroot"
-  var_deployment_token: "$(DEPLOYMENT_TOKEN)"
-
 steps:
   - task: UseDotNet@2
     displayName: "Install .NET SDK"
@@ -22,13 +17,8 @@ steps:
       versionSpec: "20.x"
 
   - script: |
-      cd $(var_app_location)
-      dotnet publish -c Release -o bin
-    displayName: "Build Blazor WASM (publish)"
-
-  - script: |
       npm install -g @azure/static-web-apps-cli
-      swa deploy --deployment-token $(var_deployment_token) \
-        --app-location "$(var_app_location)" \
-        --output-location "$(var_output_location)"
-    displayName: "Deploy using swa-cli"
+      cd src/Future030.MiniApp.GatedContentArea.Client
+      swa build
+      swa deploy --env Production --deployment-token $(DEPLOYMENT_TOKEN)
+    displayName: "Build & Deploy using swa-cli"
