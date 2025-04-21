@@ -1,24 +1,45 @@
 trigger:
-- main
+  branches: 
+    include:
+      - main
 
 pool:
   vmImage: ubuntu-22.04
 
-steps:
-  - task: UseDotNet@2
-    displayName: "Install .NET SDK"
-    inputs:
-      packageType: "sdk"
-      version: "8.x"
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Future030-Ecosystem/azure-pipeline-templates
 
-  - task: NodeTool@0
-    displayName: "Install Node.js"
-    inputs:
-      versionSpec: "20.x"
+stages:
+  - stage: BuildAndDeploy
+    displayName: "Build & Deploy"
+    jobs:
+      - job: BuildAndDeploy
+        displayName: 'Build & Deploy'
+        steps:
+          - task: UseDotNet@2
+            displayName: "Install .NET SDK"
+            inputs:
+              packageType: "sdk"
+              version: "8.x"
 
-  - script: |
-      npm install -g @azure/static-web-apps-cli
-      cd src/Future030.MiniApp.GatedContentArea.Client
-      swa build
-      swa deploy --env Production --deployment-token $(DEPLOYMENT_TOKEN)
-    displayName: "Build & Deploy using swa-cli"
+          - task: NodeTool@0
+            displayName: "Install Node.js"
+            inputs:
+              versionSpec: "20.x"
+
+          - script: |
+              npm install -g @azure/static-web-apps-cli
+              cd src/Future030.MiniApp.GatedContentArea.Client
+              swa build
+              swa deploy --env Production --deployment-token $(DEPLOYMENT_TOKEN)
+            displayName: "Build & Deploy using swa-cli"
+
+  - stage: MirrorToGitHub
+    dependsOn: BuildAndDeploy
+    jobs:
+      - template: mirror/mirror-to-github.yml@templates
+        parameters:
+          githubRepo: Future030/mini-app-gated-content-area-client
