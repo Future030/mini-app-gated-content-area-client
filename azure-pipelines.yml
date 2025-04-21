@@ -7,7 +7,6 @@ pool:
 variables:
   app_location: "src/Future030.MiniApp.GatedContentArea.Client"
   output_location: "bin/wwwroot"
-  deployment_token: $(DEPLOYMENT_TOKEN)
 
 steps:
   - task: UseDotNet@2
@@ -27,4 +26,4 @@ steps:
     inputs:
       app_location: "$(app_location)"
       output_location: "$(output_location)"
-      azure_static_web_apps_api_token: "$(deployment_token)"
+      azure_static_web_apps_api_token: "$(DEPLOYMENT_TOKEN)"
